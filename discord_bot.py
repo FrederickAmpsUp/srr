@@ -24,15 +24,23 @@ class DiscordBot:
     async def wait_ready(self):
         await self.ready_event.wait()
 
-    async def connect_vc(self, session, id: int) -> str:
-        channel = await self.client.fetch_channel(id)
+    async def connect_vc(self, session, channel_id: int) -> str:
+        channel = await self.client.fetch_channel(channel_id)
 
         if not isinstance(channel, discord.VoiceChannel):
             raise TypeError("Not a voice channel")
 
-        vc = await channel.connect(cls=voice_recv.VoiceRecvClient)
+        guild = channel.guild
+        vc = guild.voice_client  # 👈 source of truth
+
+        if vc and vc.is_connected():
+            if vc.channel.id == channel.id:
+                return channel.name
+            await vc.move_to(channel)
+        else:
+            vc = await channel.connect(cls=voice_recv.VoiceRecvClient)
+            vc.listen(session.voice_sink)
 
         session.voice_client = vc
-        vc.listen(session.voice_sink)
 
         return channel.name

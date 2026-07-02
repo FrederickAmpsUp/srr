@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 
 @dataclass(eq=False)
@@ -17,5 +17,8 @@ class Client:
         return self.ws is other.ws
 
     async def send(self, packet: dict):
-        async with self.send_lock:
-            await self.ws.send_json(packet)
+        try:
+            async with self.send_lock:
+                await self.ws.send_json(packet)
+        except WebSocketDisconnect:
+            pass

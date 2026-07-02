@@ -140,7 +140,7 @@ class Session:
             if self.keys.rank[client.permission] >= self.keys.rank["write"]:
                 await self.connect_vc(msg["id"])
         if t == "delete_session":
-            self.manager.delete_session(msg["key"])
+            await self.manager.delete_session(msg["key"])
 
     # ---- broadcasting ----
 
@@ -196,16 +196,20 @@ class Session:
                 "message": asdict(message)
             })
 
-    def cleanup(self):
-        for client in self.clients:
-            self._spawn(client.ws.close())
+    async def cleanup(self):
+        self.running = False
+
+        if self.voice_client:
+            await self.voice_client.disconnect(force=True)
 
         self.voice_sink.cleanup()
-        if self.voice_client:
-            self.voice_client.cleanup()
         self.transcriber.cleanup()
-        self.message_task.cancel()
-        self.running = False
+
+        await asyncio.gather(
+            *(client.ws.close() for client in list(self.clients)),
+            self.message_task,
+            return_exceptions=True,
+        )
 
 class SessionManager:
     def __init__(self, discord_bot):
@@ -226,7 +230,7 @@ class SessionManager:
 
         return session, key
 
-    def delete_session(self, key):
+    async def delete_session(self, key):
         session = self.get_session(key)
         if not session:
             return
@@ -237,7 +241,7 @@ class SessionManager:
         for key, _ in session.keys.keys.items():
             self.keys.pop(key, None)
         
-        session.cleanup()
+        await session.cleanup()
         del self.sessions[id(session)]
 
     def get_session(self, key: str) -> Session | None:
