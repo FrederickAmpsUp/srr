@@ -6,4 +6,4 @@ beam_size = 5
 
 [voice]
 silence_sec = 0.8
-uttterance_sec = 15
+utterance_sec = 15
