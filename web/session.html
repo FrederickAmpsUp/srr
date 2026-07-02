@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sim Race Radio — Session</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/theme.css" />
+  <style>
+    /* ---- Layout ---- */
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .session-root {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .session-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr 280px;
+      grid-template-rows: auto 1fr;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-6);
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ---- Status bar under topbar ---- */
+    .status-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: var(--space-6);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+    }
+
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .status-value {
+      font-family: var(--font-mono);
+      font-size: var(--text-md);
+      font-weight: var(--weight-medium);
+      color: var(--color-text-primary);
+    }
+
+    .status-value.accent { color: var(--color-accent); }
+    .status-value.teal   { color: var(--color-teal); }
+
+    .status-sep {
+      width: 1px;
+      height: 36px;
+      background: var(--color-border);
+    }
+
+    .status-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      font-size: var(--text-sm);
+      font-family: var(--font-display);
+      font-weight: var(--weight-bold);
+      letter-spacing: var(--tracking-wide);
+      text-transform: uppercase;
+      color: var(--color-success);
+    }
+
+    .status .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-success);
+    }
+
+    /* disconnected state */
+    .status.disconnected {
+      color: var(--color-danger);
+    }
+
+    .status.disconnected .live-dot {
+      background: var(--color-danger);
+    }
+
+    /* ---- Left column ---- */
+    .col-left {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      min-height: 0;
+    }
+
+    /* ---- Keys panel ---- */
+    .key-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .key-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      font-size: var(--text-xs);
+    }
+
+    .key-row.clickable:hover {
+      background: var(--color-surface);
+    }
+
+    .key-value {
+      font-family: var(--font-mono);
+      color: var(--color-teal);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .key-perms {
+      display: flex;
+      gap: var(--space-1);
+      flex-shrink: 0;
+    }
+
+    .key-action {
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: var(--radius-sm);
+      transition: color var(--duration-fast);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .key-action:hover { color: var(--color-text-primary); background: var(--color-surface); }
+
+    .key-action:not(.active) {
+      filter: grayscale(100%);
+      opacity: 50%;
+      pointer-events: none;
+    }
+
+    /* ---- Middle column: messages ---- */
+    .col-mid {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .messages-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .messages-panel .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .messages-panel .panel-header {
+      padding: var(--space-4) var(--space-5);
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .msg-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-2) 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-border) transparent;
+    }
+
+    .msg-list::-webkit-scrollbar { width: 4px; }
+    .msg-list::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+    .msg-item {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-5);
+      cursor: pointer;
+      transition: background var(--duration-fast);
+      border-left: 3px solid transparent;
+      will-change: transform;
+    }
+
+    .msg-item:hover {
+      background: var(--color-surface-2);
+      border-left-color: var(--color-border-bright);
+    }
+
+    .msg-item.selected {
+      background: rgba(232,25,44,0.06);
+      border-left-color: var(--color-accent);
+    }
+
+    .msg-pfp {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--color-text-muted);
+      overflow: hidden;
+    }
+
+    .msg-pfp img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .msg-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .msg-meta {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+    }
+
+    .msg-name {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-bold);
+      letter-spacing: var(--tracking-wide);
+      text-transform: uppercase;
+      color: var(--color-text-primary);
+    }
+
+    .msg-time {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+    }
+
+    .msg-content {
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .msg-send-action {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      font-size: var(--text-xs);
+      color: var(--color-accent);
+      font-family: var(--font-display);
+      font-weight: var(--weight-bold);
+      letter-spacing: var(--tracking-wide);
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity var(--duration-fast);
+      margin-top: 2px;
+    }
+
+    .msg-item:hover .msg-send-action { opacity: 1; }
+
+    /* ---- Right column ---- */
+    .col-right {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    /* ---- VC panel ---- */
+    .vc-status {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-3);
+    }
+
+    .vc-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(34,197,94,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .vc-name {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-bold);
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-wide);
+    }
+
+    .vc-sub {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+    }
+
+    .vc-members {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .vc-member {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      font-size: var(--text-xs);
+    }
+
+    .vc-member-pfp {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--color-border);
+      overflow: hidden;
+      font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--color-text-muted);
+    }
+
+    .vc-member-name {
+      color: var(--color-text-secondary);
+      flex: 1;
+    }
+
+    .vc-member.speaking .vc-member-name { color: var(--color-success); }
+
+    .speaking-bar {
+      display: flex;
+      gap: 2px;
+      align-items: flex-end;
+    }
+
+    .speaking-bar span {
+      display: inline-block;
+      width: 3px;
+      background: var(--color-success);
+      border-radius: 1px;
+      animation: speak var(--duration-slow) ease-in-out infinite alternate;
+    }
+
+    .speaking-bar span:nth-child(2) { animation-delay: 0.15s; }
+    .speaking-bar span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes speak {
+      from { height: 4px; }
+      to   { height: 12px; }
+    }
+
+    /* ---- Session meta panel ---- */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3);
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meta-value {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--color-text-primary);
+    }
+
+    /* ---- Overlay link ---- */
+    .overlay-link-box {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .overlay-url {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-teal);
+      word-break: break-all;
+    }
+
+    /* ---- Modal ---- */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-top: 2px solid var(--color-accent);
+      border-radius: var(--radius-md);
+      padding: var(--space-8);
+      width: 100%; max-width: 420px;
+      display: flex; flex-direction: column; gap: var(--space-5);
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-black);
+      letter-spacing: var(--tracking-wide);
+      text-transform: uppercase;
+    }
+    .modal-label {
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-bold);
+      letter-spacing: var(--tracking-wider);
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      display: block;
+      margin-bottom: var(--space-2);
+    }
+    .modal-actions { display: flex; gap: var(--space-3); justify-content: flex-end; }
+
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed; bottom: var(--space-8); left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border-bright);
+      border-left: 3px solid var(--color-accent);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-5);
+      font-size: var(--text-sm);
+      color: var(--color-text-primary);
+      opacity: 0;
+      transition: all var(--duration-normal) var(--ease-out);
+      z-index: 2000;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topbar">
+  <a href="/" class="topbar-logo" style="text-decoration:none;">SR<span>R</span> <span style="color:var(--color-text-muted);font-weight:400;font-size:var(--text-base);letter-spacing:normal;margin-left:4px;">Sim Race Radio</span></a>
+  <div class="topbar-sep"></div>
+  <span class="topbar-subtitle" id="topbar-session-key">Loading…</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-subtitle" id="topbar-perms">Loading…</span>
+  <div class="topbar-right">
+    <div id="status" class="status">
+      <span class="live-dot"></span>
+      <span class="status-text">Live</span>
+    </div>
+    <div class="topbar-sep"></div>
+    <button class="btn btn-ghost btn-sm active" id="copy-overlay-btn">Copy Overlay URL</button>
+  </div>
+</nav>
+
+<div class="session-root">
+  <div class="session-layout">
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="hud-label">Race</div>
+        <div class="status-value accent" id="race-name">Round 4 — Spa-Francorchamps</div>
+      </div>
+      <div class="status-sep"></div>
+      <div class="status-item">
+        <div class="hud-label">Time Active</div>
+        <div class="status-value teal" id="time-active">00:42:17</div>
+      </div>
+      <div class="status-sep"></div>
+      <div class="status-item">
+        <div class="hud-label">Messages</div>
+        <div class="status-value" id="msg-count">12</div>
+      </div>
+      <div class="status-sep"></div>
+      <div class="status-item">
+        <div class="hud-label">Active Keys</div>
+        <div class="status-value" id="key-count">3</div>
+      </div>
+      <div class="status-sep"></div>
+      <div class="status-item">
+        <div class="hud-label">VC</div>
+        <div class="status-value" id="vc-name-bar">#race-radio</div>
+      </div>
+      <div class="status-actions">
+        <button class="btn btn-ghost btn-sm active" onclick="document.getElementById('add-key-modal').classList.add('open')">+ Add Key</button>
+      </div>
+    </div>
+
+    <!-- LEFT: KEYS -->
+    <div class="col-left">
+      <div class="panel" style="flex:0 0 auto;">
+        <div class="panel-header">
+          <div class="accent-bar"></div>
+          <span class="panel-title">API Keys</span>
+        </div>
+        <div class="key-list" id="key-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Session metadata -->
+      <div class="panel" style="flex:0 0 auto;">
+        <div class="panel-header">
+          <div class="accent-bar"></div>
+          <span class="panel-title">Session Info</span>
+        </div>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="hud-label">Created</div>
+            <div class="meta-value" id="meta-created">13:05 UTC</div>
+          </div>
+          <div class="meta-item">
+            <div class="hud-label">Race</div>
+            <div class="meta-value" id="meta-race">Spa</div>
+          </div>
+          <!--<div class="meta-item">
+            <div class="hud-label">Region</div>
+            <div class="meta-value" id="meta-region">EU</div>
+          </div>
+          <div class="meta-item">
+            <div class="hud-label">Drivers</div>
+            <div class="meta-value" id="meta-drivers">18</div>
+          </div>-->
+        </div>
+        <div class="divider"></div>
+        <div class="overlay-link-box">
+          <div class="hud-label">Overlay URL</div>
+          <div class="overlay-url" id="overlay-url">Loading…</div>
+          <button class="btn btn-teal btn-sm active" style="align-self:flex-start;" id="open-overlay-btn">Open Overlay ↗</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MID: MESSAGES -->
+    <div class="col-mid">
+      <div class="messages-panel" style="height:calc(100vh - 200px);">
+        <div class="panel" style="height:100%;">
+          <div class="panel-header">
+            <div class="accent-bar"></div>
+            <span class="panel-title">Radio Messages</span>
+            <span style="margin-left:auto;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);">click to push to overlay</span>
+          </div>
+          <div class="msg-list" id="msg-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: VC + META -->
+    <div class="col-right">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="accent-bar"></div>
+          <span class="panel-title">Discord VC</span>
+        </div>
+        <div class="vc-sub" id="vc-paste-hint">Paste a channel ID/URL to join.</div>
+        <div class="vc-status">
+          <div class="vc-icon">🎙️</div>
+          <div>
+            <div class="vc-name" id="vc-channel-name">not connected</div>
+            <div class="vc-sub" id="vc-member-count"></div>
+          </div>
+          <span class="badge" id="vc-conn-badge" style="margin-left:auto;">NC</span>
+        </div>
+        <div class="vc-members" id="vc-members">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="accent-bar"></div>
+          <span class="panel-title">Now Playing</span>
+        </div>
+        <div id="overlay-preview" style="display:flex;flex-direction:column;gap:var(--space-3);">
+          <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <div class="msg-pfp" id="ov-pfp">👤</div>
+            <div>
+              <div class="msg-name" id="ov-name">—</div>
+              <div class="msg-content" id="ov-content" style="margin-top:2px;font-size:var(--text-xs);">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD KEY MODAL -->
+<div class="modal-overlay" id="add-key-modal">
+  <div class="modal">
+    <div class="modal-title">New API Key</div>
+    <div>
+      <label class="modal-label" for="new-key-name">Label (optional)</label>
+      <input class="input" id="new-key-name" type="text" placeholder="e.g. Spotter App, Overlay Client" />
+    </div>
+    <div>
+      <label class="modal-label">Permissions</label>
+      <div class="perm-row">
+        <label class="perm-label"><input type="checkbox" class="perm-check" id="perm-read" checked /> Read</label>
+        <label class="perm-label"><input type="checkbox" class="perm-check" id="perm-write" /> Write</label>
+        <label class="perm-label"><input type="checkbox" class="perm-check" id="perm-admin" /> Admin</label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost active" onclick="document.getElementById('add-key-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary active" id="confirm-add-key">Generate Key →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---- Session key from URL ----
+  const SESSION_KEY = (() => {
+    const m = window.location.pathname.match(/^\/s\/([A-Za-z0-9_-]{16})$/);
+    return m ? decodeURIComponent(m[1]) : '0000000000000000';
+  })();
+
+  document.getElementById('topbar-session-key').textContent = SESSION_KEY;
+
+  const statusEl = document.getElementById("status");
+  const textEl = statusEl.querySelector(".status-text");
+
+  function setConnected(isConnected) {
+    if (isConnected) {
+      statusEl.classList.remove("disconnected");
+      textEl.textContent = "Live";
+    } else {
+      statusEl.classList.add("disconnected");
+      textEl.textContent = "Disconnected";
+    }
+  }
+
+  const overlayUrl = `${window.location.origin}/o/${SESSION_KEY}/`;
+  document.getElementById('overlay-url').textContent = overlayUrl;
+
+  document.getElementById('open-overlay-btn').addEventListener('click', () => {
+    window.open(overlayUrl, '_blank');
+  });
+
+  document.getElementById('copy-overlay-btn').addEventListener('click', () => {
+    navigator.clipboard.writeText(overlayUrl).then(() => showToast('Overlay URL copied!', 'var(--color-teal)'));
+  });
+
+  // ---- Dummy data ----
+  let KEYS = [
+    { value: SESSION_KEY, label: 'SESSION_KEY', perms: ['read'] },
+    { value: '', label: 'Priviledged key', perms: ['read', 'write', 'admin'] },
+  ];
+
+  let VC_MEMBERS = [
+    /* { name: 'I am a member', speaking: false, pfp: '' }, */
+  ];
+  let VC_CHANNEL = '';
+
+  let MESSAGES = [
+    /* { id: 0, name: 'M. VERSTAPPEN', pfp: '', content: 'Box box box, front wing damage.', time: '13:07:14' }, */
+  ];
+
+  let PERMISSION = "read";
+  const PERM_RANK = {
+    read: 0,
+    write: 1,
+    admin: 2
+  };
+
+  let SESSION_META = {
+    race_name: "Not Set",
+    race_name_short: "N/A",
+    created_at: 0
+  };
+
+  // ---- DOM helpers ----
+  // All user/server-supplied strings (labels, names, message content, avatar
+  // URLs, etc.) are inserted via textContent / element properties rather than
+  // innerHTML string interpolation, so they can never be interpreted as HTML
+  // or break out of an inline event handler.
+  function makeBadge(cls, text) {
+    const span = document.createElement('span');
+    span.className = `badge ${cls}`;
+    span.textContent = text;
+    return span;
+  }
+
+  function makeAvatar(containerClass, src) {
+    const wrap = document.createElement('div');
+    wrap.className = containerClass;
+    const img = document.createElement('img');
+    img.src = src || '';
+    img.alt = '';
+    wrap.appendChild(img);
+    return wrap;
+  }
+
+  // ---- Render keys ----
+  function renderKeys() {
+    const list = document.getElementById('key-list');
+    const userRank = PERM_RANK[PERMISSION];
+
+    list.innerHTML = '';
+
+    KEYS.forEach(k => {
+      const keyRank = PERM_RANK[k.perms.includes('admin') ? 'admin'
+                     : k.perms.includes('write') ? 'write'
+                     : 'read'];
+
+      const canCopy = userRank >= keyRank;
+      const canDelete = PERMISSION === "admin" && k.value != SESSION_KEY;
+
+      const row = document.createElement('div');
+      row.className = `key-row ${canCopy ? 'clickable' : ''}`;
+      if (canCopy) {
+        row.addEventListener('click', (e) => {
+          const url = `/s/${encodeURIComponent(k.value)}`;
+          if (e.ctrlKey || e.metaKey || e.shiftKey) {
+            window.open(url, '_blank', 'noopener');
+          } else {
+            window.location.href = url;
+          }
+        });
+      }
+
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'key-value';
+      valueSpan.title = k.label;
+      valueSpan.textContent = k.label;
+      row.appendChild(valueSpan);
+
+      const perms = document.createElement('div');
+      perms.className = 'key-perms';
+      if (k.perms.includes('read'))  perms.appendChild(makeBadge('badge-read', 'R'));
+      if (k.perms.includes('write')) perms.appendChild(makeBadge('badge-write', 'W'));
+      if (k.perms.includes('admin')) perms.appendChild(makeBadge('badge-admin', 'A'));
+      row.appendChild(perms);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = `key-action ${canCopy ? 'active' : ''}`;
+      copyBtn.title = 'Copy key';
+      copyBtn.innerHTML = '&#x2398;';
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyKey(k.value);
+      });
+      row.appendChild(copyBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = `key-action ${canDelete ? 'active' : ''}`;
+      delBtn.title = 'Delete key';
+      delBtn.innerHTML = '&#x1F5D1;';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteKey(k.value);
+      });
+      row.appendChild(delBtn);
+
+      list.appendChild(row);
+    });
+
+    document.getElementById('key-count').textContent = KEYS.length;
+  }
+
+  function copyKey(val) {
+    if (val) navigator.clipboard.writeText(val).then(() => showToast('Key copied!', 'var(--color-teal)'));
+    else showToast('No permission!', 'var(--color-danger)');
+  }
+
+  function deleteKey(val) {
+    if (val != SESSION_KEY)
+      send("delete_key", { key: val });
+  }
+
+  // ---- Render VC ----
+  function renderVC() {
+    const members = document.getElementById('vc-members');
+    members.innerHTML = '';
+
+    VC_MEMBERS.forEach(m => {
+      const row = document.createElement('div');
+      row.className = `vc-member ${m.speaking ? 'speaking' : ''}`;
+
+      row.appendChild(makeAvatar('vc-member-pfp', m.pfp));
+
+      const name = document.createElement('span');
+      name.className = 'vc-member-name';
+      name.textContent = m.name;
+      row.appendChild(name);
+
+      if (m.speaking) {
+        const bar = document.createElement('div');
+        bar.className = 'speaking-bar';
+        bar.innerHTML = '<span></span><span></span><span></span>';
+        row.appendChild(bar);
+      }
+
+      members.appendChild(row);
+    });
+
+    if (VC_CHANNEL) {
+      document.getElementById('vc-channel-name').textContent = "#" + VC_CHANNEL;
+      document.getElementById('vc-name-bar').textContent = "#" + VC_CHANNEL;
+      document.getElementById('vc-conn-badge').classList.add('badge-live');
+      document.getElementById('vc-conn-badge').textContent = "LIVE";
+    } else {
+      document.getElementById('vc-channel-name').textContent = 'not connected';
+      document.getElementById('vc-name-bar').textContent = 'N/C';
+      document.getElementById('vc-conn-badge').classList.remove('badge-live');
+      document.getElementById('vc-conn-badge').textContent = "NC";
+    }
+
+    document.getElementById('vc-member-count').textContent = `${VC_MEMBERS.length} connected`;
+  }
+
+  // ---- Render a single message row (returns a DOM element) ----
+  function renderMessage(m) {
+    const item = document.createElement('div');
+    item.className = 'msg-item';
+    item.id = `msg-${m.id}`;
+    item.dataset.id = m.id;
+    if (PERM_RANK[PERMISSION] < PERM_RANK.write) {
+      item.style.pointerEvents = 'none';
+    }
+    item.addEventListener('click', () => displayMsg(m.id));
+
+    item.appendChild(makeAvatar('msg-pfp', m.pfp));
+
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'msg-name';
+    nameSpan.textContent = m.name;
+    meta.appendChild(nameSpan);
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'msg-time';
+    timeSpan.textContent = m.time;
+    meta.appendChild(timeSpan);
+
+    body.appendChild(meta);
+
+    const content = document.createElement('div');
+    content.className = 'msg-content';
+    content.textContent = m.content;
+    body.appendChild(content);
+
+    const hint = document.createElement('div');
+    hint.className = 'msg-send-action';
+    hint.id = `send-hint-${m.id}`;
+    hint.innerHTML = '&#9654; Push to Overlay';
+    body.appendChild(hint);
+
+    item.appendChild(body);
+
+    return item;
+  }
+
+  // ---- Render messages ----
+  function renderMessages() {
+    const list = document.getElementById('msg-list');
+    list.innerHTML = '';
+    MESSAGES.forEach(m => list.appendChild(renderMessage(m)));
+    document.getElementById('msg-count').textContent = MESSAGES.length;
+    // Scroll to bottom
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function prependMessage(el, newNode) {
+    const children = Array.from(el.children);
+
+    // FIRST: record old positions
+    const first = new Map();
+    children.forEach(child => {
+      first.set(child, child.getBoundingClientRect());
+    });
+
+    // insert new element at top
+    el.prepend(newNode);
+
+    // LAST: new positions
+    const last = new Map();
+    const all = Array.from(el.children);
+
+    all.forEach(child => {
+      last.set(child, child.getBoundingClientRect());
+    });
+
+    // INVERT + PLAY
+    all.forEach(child => {
+      const f = first.get(child);
+      const l = last.get(child);
+
+      if (!f || !l) return;
+
+      const dy = f.top - l.top;
+
+      child.style.transform = `translateY(${dy}px)`;
+
+      child.getBoundingClientRect();
+
+      requestAnimationFrame(() => {
+        child.style.transition = "transform 220ms cubic-bezier(.2,.9,.2,1)";
+        child.style.transform = "translateY(0)";
+      });
+
+      child.addEventListener("transitionend", () => {
+        child.style.transition = "";
+      }, { once: true });
+    });
+  }
+
+  function renderPermission() {
+    document.getElementById('topbar-perms').textContent = PERMISSION.toUpperCase();
+  }
+
+  function renderMetadata() {
+    document.getElementById('race-name').textContent = SESSION_META.race_name;
+
+    document.getElementById('meta-race').textContent = SESSION_META.race_name_short;
+    if (SESSION_META.race_name_short === "N/A" && SESSION_META.race_name !== "Not Set")
+      document.getElementById('meta-race').textContent = SESSION_META.race_name;
+
+    const date = new Date(SESSION_META.created_at);
+
+    const text = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+
+    document.getElementById('meta-created').textContent = text;
+  }
+
+  function displayMsg(id) {
+    send("display_message", { id: id });
+  }
+
+  function connectVC(id) {
+    send("connect_vc", { id: id });
+  }
+
+  function onDisplayMsg(id) {
+    const msg = MESSAGES.find(m => m.id === id);
+    if (!msg) return;
+
+    document.getElementById(`msg-${id}`).classList.add('selected');
+    document.getElementById(`send-hint-${id}`).innerHTML = "&#9654 Now Playing";
+
+    const ovPfp = document.getElementById('ov-pfp');
+    ovPfp.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = msg.pfp;
+    img.alt = '';
+    ovPfp.appendChild(img);
+
+    document.getElementById('ov-name').textContent = msg.name;
+    document.getElementById('ov-content').textContent = msg.content;
+
+    showToast(`Now Playing: ${msg.name}`, 'var(--color-success)');
+  }
+
+  function onDisplayMsgEnd() {
+    document.getElementById('ov-pfp').textContent = '👤';
+    document.getElementById('ov-name').textContent = '—';
+    document.getElementById('ov-content').textContent = '—';
+  }
+
+  // ---- Add key modal ----
+  document.getElementById('confirm-add-key').addEventListener('click', () => {
+    const label = document.getElementById('new-key-name').value.trim() || 'Unnamed';
+    const perms = [];
+    if (document.getElementById('perm-read').checked)  perms.push('read');
+    if (document.getElementById('perm-write').checked) perms.push('write');
+    if (document.getElementById('perm-admin').checked) perms.push('admin');
+
+    send("create_key", { label, perms });
+
+    document.getElementById('add-key-modal').classList.remove('open');
+    document.getElementById('new-key-name').value = '';
+    showToast(`Creating key: ${label}`, 'var(--color-success)');
+  });
+
+  document.getElementById('add-key-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
+
+  document.addEventListener("paste", (e) => {
+    const text = (e.clipboardData || window.clipboardData)
+      .getData("text")
+      .trim();
+
+    const match = text.match(
+      /(?:https?:\/\/)?(?:canary\.|ptb\.)?discord(?:app)?\.com\/channels\/\d+\/(?<channel>\d{17,20})|^(?<channel>\d{17,20})$/
+    );
+
+    if (!match) return;
+
+    const channelId = match.groups?.channel || match[1];
+
+    connectVC(channelId);
+
+    e.preventDefault();
+  });
+
+  function formatDuration(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor(seconds / 60) % 60;
+    const s = seconds % 60;
+
+    return h > 0
+      ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+      : `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  // ---- Timer ----
+  function updateTimeActive() {
+    const elapsed = Math.floor((Date.now() - SESSION_META.created_at) / 1000);
+
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    const s = elapsed % 60;
+
+    document.getElementById("time-active").textContent =
+      `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+
+  updateTimeActive();
+  setInterval(updateTimeActive, 1000);
+
+  // ---- Toast ----
+  function showToast(msg, color) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    if (color) t.style.borderLeftColor = color;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function handleMessage(event) {
+    const msg = JSON.parse(event.data);
+
+    switch (msg.type) {
+
+      case "init": {
+        KEYS = msg.keys || [];
+        VC_MEMBERS = msg.vc_members || [];
+        VC_CHANNEL = msg.vc_channel || '';
+        MESSAGES = msg.messages || [];
+        PERMISSION = msg.permission || "read";
+        SESSION_META = {
+          ...SESSION_META,
+          ...msg.meta,
+        };
+        renderKeys(); // full rerender
+        renderVC();
+        renderMessages();
+        renderPermission();
+        renderMetadata();
+        break;
+      }
+
+      case "bulk": {
+        if (msg.keys) {
+          KEYS = msg.keys;
+          renderKeys();
+        }
+        if (msg.vc_members) {
+          VC_MEMBERS = msg.vc_members;
+          renderVC();
+        }
+        if (msg.messages) {
+          MESSAGES = msg.messages;
+          renderMessages();
+        }
+        if (msg.permission) {
+          PERMISSION = msg.permission;
+          renderPermission();
+        }
+        if (msg.vc_channel) {
+          VC_CHANNEL = msg.vc_channel;
+        }
+        if (msg.vc_channel || msg.vc_members) {
+          renderVC();
+        }
+        break;
+      }
+
+      case "new_message": {
+        MESSAGES.unshift(msg.message);
+        prependMessage(document.getElementById("msg-list"), renderMessage(msg.message));
+        break;
+      }
+
+      case "display_message": {
+        onDisplayMsg(parseInt(msg.id));
+        break;
+      }
+
+      default:
+        console.warn("Unknown WS message:", msg);
+    }
+  }
+
+  let ws;
+
+  function send(type, data = {}) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(JSON.stringify({
+      type,
+      ...data
+    }));
+  }
+
+  function connect() {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+    ws = new WebSocket(`${protocol}//${location.host}/ws/${SESSION_KEY}`);
+
+    ws.onopen = () => {
+      setConnected(true);
+      console.log("Connected");
+    };
+
+    ws.onmessage = handleMessage;
+
+    ws.onclose = () => {
+      setConnected(false);
+      console.log("Disconnected, retrying...");
+      setTimeout(connect, 1000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+  }
+
+  setConnected(false);
+  connect();
+
+  // ---- Init ----
+  renderKeys();
+  renderVC();
+  renderMessages();
+  renderPermission();
+</script>
+</body>
+</html>
