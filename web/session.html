@@ -516,7 +516,7 @@
     <div class="status-bar">
       <div class="status-item">
         <div class="hud-label">Race</div>
-        <div class="status-value accent" id="race-name">Round 4 — Spa-Francorchamps</div>
+        <div class="status-value accent" id="race-name">Not Set</div>
       </div>
       <div class="status-sep"></div>
       <div class="status-item">
@@ -536,7 +536,7 @@
       <div class="status-sep"></div>
       <div class="status-item">
         <div class="hud-label">VC</div>
-        <div class="status-value" id="vc-name-bar">#race-radio</div>
+        <div class="status-value" id="vc-name-bar">N/C</div>
       </div>
       <div class="status-actions">
         <button class="btn btn-ghost btn-sm active" onclick="document.getElementById('add-key-modal').classList.add('open')">+ Add Key</button>
@@ -564,11 +564,11 @@
         <div class="meta-grid">
           <div class="meta-item">
             <div class="hud-label">Created</div>
-            <div class="meta-value" id="meta-created">13:05 UTC</div>
+            <div class="meta-value" id="meta-created">N/A</div>
           </div>
           <div class="meta-item">
             <div class="hud-label">Race</div>
-            <div class="meta-value" id="meta-race">Spa</div>
+            <div class="meta-value" id="meta-race">N/A</div>
           </div>
           <!--<div class="meta-item">
             <div class="hud-label">Region</div>
@@ -585,6 +585,8 @@
           <div class="overlay-url" id="overlay-url">Loading…</div>
           <button class="btn btn-teal btn-sm active" style="align-self:flex-start;" id="open-overlay-btn">Open Overlay ↗</button>
         </div>
+        <div class="divider"></div>
+        <button class="btn btn-primary" style="width: 100%; justify-content: center" id="delete-session-btn" onclick="document.getElementById('delete-session-modal').classList.add('open')">Delete Session</button>
       </div>
     </div>
 
@@ -668,6 +670,18 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="delete-session-modal">
+  <div class="modal">
+    <div class="modal-title">Delete session</div>
+    <div>
+      <label class="modal-label">Are you sure you want to delete the session?<br>This action is irreversible.</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost active" onclick="document.getElementById('delete-session-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary active" id="confirm-delete-session">Delete session</button>
+    </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -682,13 +696,27 @@
   const statusEl = document.getElementById("status");
   const textEl = statusEl.querySelector(".status-text");
 
-  function setConnected(isConnected) {
-    if (isConnected) {
+  let connected = false;
+
+  function renderConnected() {
+    if (connected) {
       statusEl.classList.remove("disconnected");
       textEl.textContent = "Live";
     } else {
       statusEl.classList.add("disconnected");
       textEl.textContent = "Disconnected";
+      document.getElementById('vc-name-bar').textContent = "N/A";
+      document.getElementById('race-name').textContent = "Not Set";
+      document.getElementById('meta-created').textContent = "N/A";
+      document.getElementById('meta-race').textContent = "N/A";
+      document.getElementById('vc-channel-name').textContent = "not connected";
+      document.getElementById('vc-conn-badge').classList.remove("badge-live");
+      document.getElementById('vc-conn-badge').textContent = "NC";
+
+      KEYS = [];
+      MESSAGES = [];
+      renderKeys();
+      renderMessages();
     }
   }
 
@@ -974,6 +1002,11 @@
 
   function renderPermission() {
     document.getElementById('topbar-perms').textContent = PERMISSION.toUpperCase();
+    if (!connected) document.getElementById('topbar-perms').textContent = "NOT CONNECTED";
+    if (PERMISSION === "admin")
+      document.getElementById('delete-session-btn').classList.add("active");
+    else
+      document.getElementById('delete-session-btn').classList.remove("active");
   }
 
   function renderMetadata() {
@@ -1042,10 +1075,20 @@
     showToast(`Creating key: ${label}`, 'var(--color-success)');
   });
 
+  document.getElementById('confirm-delete-session').addEventListener('click', () => {
+    send("delete_session", { "key": SESSION_KEY });
+
+    document.getElementById('delete-session-modal').classList.remove('open');
+    showToast(`Deleting session`);
+    window.location.href = "/";
+  });
+
   document.getElementById('add-key-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
   });
-
+  document.getElementById('delete-session-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
   document.addEventListener("paste", (e) => {
     const text = (e.clipboardData || window.clipboardData)
       .getData("text")
@@ -1084,6 +1127,9 @@
 
     document.getElementById("time-active").textContent =
       `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    if (!connected)
+      document.getElementById("time-active").textContent =
+        "N/A";
   }
 
   updateTimeActive();
@@ -1101,8 +1147,9 @@
   function handleMessage(event) {
     const msg = JSON.parse(event.data);
 
+    connected = true;
+    renderConnected();
     switch (msg.type) {
-
       case "init": {
         KEYS = msg.keys || [];
         VC_MEMBERS = msg.vc_members || [];
@@ -1180,14 +1227,14 @@
     ws = new WebSocket(`${protocol}//${location.host}/ws/${SESSION_KEY}`);
 
     ws.onopen = () => {
-      setConnected(true);
       console.log("Connected");
     };
 
     ws.onmessage = handleMessage;
 
     ws.onclose = () => {
-      setConnected(false);
+      connected = false;
+      renderConnected();
       console.log("Disconnected, retrying...");
       setTimeout(connect, 1000);
     };
@@ -1197,7 +1244,8 @@
     };
   }
 
-  setConnected(false);
+  renderVC();
+  renderConnected();
   connect();
 
   // ---- Init ----

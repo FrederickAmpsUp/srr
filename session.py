@@ -24,7 +24,7 @@ class Session:
 
         self.voice_queue = Queue()
         self.text_queue = Queue()
-        self.voice_client: voice_recv.VoiceRecvClient | None = None
+        self.voice_client: voice_recv.VoiceRecvClient = None
         self.voice_sink = VoiceSink(self.voice_queue)
         self.transcriber = QueueTranscriber(self.voice_queue, self.text_queue)
 
@@ -34,7 +34,9 @@ class Session:
 
         self.created_at = time.time()
 
-        asyncio.create_task(self._message_queue_loop())
+        self.race_name: str | None = ""
+
+        self.message_task = asyncio.create_task(self._message_queue_loop())
     # ---- lifecycle ----
 
     def attach_loop(self, loop):
@@ -68,7 +70,8 @@ class Session:
             "messages": self.messages.serialize(),
             "permission": perm,
             "meta": {
-                "created_at": self.created_at * 1000
+                "created_at": self.created_at * 1000,
+                "race_name": self.race_name
             }
         }
 
@@ -122,7 +125,6 @@ class Session:
         await self.broadcast_vc_channel(self.vc_channel)
 
     async def handle_packet(self, client: Client, msg: dict):
-        print(msg)
         t = msg.get("type")
 
         if t == "delete_key":
@@ -137,6 +139,8 @@ class Session:
         if t == "connect_vc":
             if self.keys.rank[client.permission] >= self.keys.rank["write"]:
                 await self.connect_vc(msg["id"])
+        if t == "delete_session":
+            self.manager.delete_session(msg["key"])
 
     # ---- broadcasting ----
 
@@ -191,6 +195,18 @@ class Session:
                 "type": "new_message",
                 "message": asdict(message)
             })
+
+    def cleanup(self):
+        for client in self.clients:
+            self._spawn(client.ws.close())
+
+        self.voice_sink.cleanup()
+        if self.voice_client:
+            self.voice_client.cleanup()
+        self.transcriber.cleanup()
+        self.message_task.cancel()
+        self.running = False
+
 class SessionManager:
     def __init__(self, discord_bot):
         self.sessions = {}
@@ -206,9 +222,25 @@ class SessionManager:
         self.sessions[id(session)] = session
         self.keys[key] = session
 
+        session.attach_loop(asyncio.get_running_loop())
+
         return session, key
 
-    def get_session(self, key: str):
+    def delete_session(self, key):
+        session = self.get_session(key)
+        if not session:
+            return
+
+        if session.keys.get_perm(key) != "admin":
+            return
+
+        for key, _ in session.keys.keys.items():
+            self.keys.pop(key, None)
+        
+        session.cleanup()
+        del self.sessions[id(session)]
+
+    def get_session(self, key: str) -> Session | None:
         return self.keys.get(key, None)
 
     def get_audio(self, key: str, message: int):

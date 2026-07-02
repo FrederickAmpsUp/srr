@@ -42,7 +42,8 @@ class WebServer:
         return StreamingResponse(io.BytesIO(data), media_type="audio/wav")
 
     async def create_session(self, req: CreateSessionRequest):
-        _, key = self.session_manager.create_session()
+        session, key = self.session_manager.create_session()
+        session.race_name = req.race_name
         return { "key": key }
 
     async def websocket(self, ws: WebSocket, key: str):
