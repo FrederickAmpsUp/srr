@@ -15,6 +15,7 @@ class WhisperConfig:
 @dataclass
 class VoiceConfig:
     silence_sec: float
+    utterance_sec: float
 
 whisper = WhisperConfig(**config["whisper"])
 voice = VoiceConfig(**config["voice"])

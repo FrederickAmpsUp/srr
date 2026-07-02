@@ -11,13 +11,22 @@ class UserBuffer:
         self.user       = user
         self.chunks:    list[bytes] = []
         self.last_spoke = time.monotonic()
+        self.started = self.last_spoke
 
     def push(self, pcm: bytes):
+        if not self.chunks:
+            self.started = time.monotonic()
+
         self.chunks.append(pcm)
         self.last_spoke = time.monotonic()
 
-    def should_flush(self) -> bool:
-        return bool(self.chunks) and (time.monotonic() - self.last_spoke >= config.voice.silence_sec)
+    def should_flush(self):
+        now = time.monotonic()
+
+        silence = now - self.last_spoke >= config.voice.silence_sec
+        max_duration = now - self.started >= config.voice.utterance_sec
+
+        return self.chunks and (silence or max_duration)
 
     def flush(self) -> bytes:
         data = b"".join(self.chunks)
