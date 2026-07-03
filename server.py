@@ -20,6 +20,7 @@ class WebServer:
         self.app.get("/o/{key}")(self.overlay)
         self.app.get("/theme.css")(self.theme)
         self.app.get("/audio/{key}/{message}")(self.audio)
+        self.app.get("/favicon.ico")(self.favicon)
         self.app.post("/api/sessions")(self.create_session)
         self.app.websocket("/ws/{key}")(self.websocket)
 
@@ -40,6 +41,9 @@ class WebServer:
         if not data:
             return
         return StreamingResponse(io.BytesIO(data), media_type="audio/wav")
+
+    async def favicon(self):
+        return FileResponse("web/favicon.ico")
 
     async def create_session(self, req: CreateSessionRequest):
         session, key = self.session_manager.create_session()
