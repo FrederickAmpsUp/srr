@@ -63,7 +63,7 @@ A Discord bot that listens to voice channels, transcribes and lists messages in 
    python launch.py
    ```
 
-The web interface is served on `0.0.0.0:8765`.
+The web interface is served on `0.0.0.0:8765`, and an IPython REPL is provided in the terminal for local interaction with sessions.
 
 ## Access
 
