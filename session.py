@@ -5,6 +5,7 @@ from client import Client
 import secrets
 from queue import Queue
 from discord.ext import voice_recv
+from discord import Member
 from voice_sink import VoiceSink
 from transcription import QueueTranscriber
 from dataclasses import asdict
@@ -174,19 +175,27 @@ class Session:
             except Exception:
                 continue
 
+            text: str
+            pcm: bytes
+            user: Member
+
+            text, pcm, user = msg
+           
+            uname = user.display_name or user.name
+
             # forward to message manager / state
             message = Message(
                 id=len(self.messages.messages),
-                name=msg[2].name,
-                pfp=msg[2].display_avatar.url,
-                content=msg[0],
+                name=uname,
+                pfp=user.display_avatar.url,
+                content=text,
                 time="0:00:00"
             )
 
             self.messages.add(message)
 
             buf = io.BytesIO()
-            sf.write(buf, msg[1], 48000, format="WAV", subtype="PCM_16")
+            sf.write(buf, pcm, 48000, format="WAV", subtype="PCM_16")
             buf.seek(0)
             self.message_audio[message.id] = buf.read()
 
