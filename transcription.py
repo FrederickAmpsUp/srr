@@ -2,7 +2,7 @@ from faster_whisper import WhisperModel
 import config
 import numpy as np
 from scipy.signal import resample_poly
-from queue import Queue
+from queue import Empty, Queue
 import threading
 
 def _pcm_to_float32(pcm: bytes) -> np.ndarray:
@@ -51,7 +51,7 @@ class Transcriber(object):
     
     def transcribe(self, audio: bytes) -> str:
         segments, _ = self.model.transcribe(_pcm_to_float32(audio), beam_size=config.whisper.beam_size)
-        return "".join([s.text for s in segments])[1:]
+        return "".join([s.text for s in segments]).strip()
 
 class QueueTranscriber(object):
     def __init__(self, rx_queue: Queue, tx_queue: Queue):
@@ -63,13 +63,19 @@ class QueueTranscriber(object):
         threading.Thread(target=self.run, daemon=True).start()
 
     def run(self):
-        while not self._stop.wait(.05):
-            pcm, *rest = self.rx_queue.get()
+        while not self._stop.is_set():
+            try:
+                try:
+                    pcm, *rest = self.rx_queue.get(timeout=0.05)
+                except Empty:
+                    continue
 
-            text = self.transcriber.transcribe(pcm)
-            print(text)
-            if text:
-                self.tx_queue.put((text, _apply_fade(np.frombuffer(pcm, dtype=np.int16).reshape(-1,2), 48000), *rest))
+                text = self.transcriber.transcribe(pcm)
+                print(text)
+                if text:
+                    self.tx_queue.put((text, _apply_fade(np.frombuffer(pcm, dtype=np.int16).reshape(-1,2), 48000), *rest))
+            except Exception as e:
+                print(e)
 
     def cleanup(self):
         self._stop.set()

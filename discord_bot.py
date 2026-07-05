@@ -1,5 +1,5 @@
 import discord
-from discord.ext import voice_recv
+from discord.ext import voice_recv, tasks
 import asyncio
 
 class DiscordBot:
@@ -9,9 +9,12 @@ class DiscordBot:
         intents.voice_states = True
 
         self.client = discord.Client(intents=intents)
+        self.client.setup_hook = self.setup_hook
         self.token = token
 
         self.ready_event = asyncio.Event()
+
+        self.vcs = set()
 
         @self.client.event
         async def on_ready():
@@ -31,7 +34,7 @@ class DiscordBot:
             raise TypeError("Not a voice channel")
 
         guild = channel.guild
-        vc = guild.voice_client  # 👈 source of truth
+        vc = guild.voice_client
 
         if vc and vc.is_connected():
             if vc.channel.id == channel.id:
@@ -42,5 +45,22 @@ class DiscordBot:
             vc.listen(session.voice_sink)
 
         session.voice_client = vc
-
+        self.vcs.add(vc)
+        
         return channel.name
+
+    async def setup_hook(self) -> None:
+        self.send_packet.start()
+
+    @tasks.loop(seconds=10)
+    async def send_packet(self):
+        '''
+        We need this to send packets occasionally in case there is a period of no voice activity.
+        This will prevent our bot's listen socket from closing.
+        '''
+        for vc in self.vcs:
+            try:
+                if vc and vc.is_connected():
+                    vc.send_audio_packet(b"\xf8\xff\xfe", encode=False)
+            except Exception as e:
+                print(e)

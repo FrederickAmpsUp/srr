@@ -2,8 +2,9 @@ from discord.ext import voice_recv
 import time
 import threading
 import config
-from queue import Queue
+from queue import Full, Queue
 import numpy as np
+import traceback
 
 def _apply_fade(pcm: bytes, sample_rate: int, channels: int, fade_ms: int = 8) -> bytes:
     frame_size = 2 * channels
@@ -97,6 +98,7 @@ class VoiceSink(voice_recv.AudioSink):
             self._buffers[uid].push(pcm)
 
     def cleanup(self):
+        traceback.print_stack()
         self._stop.set()
 
     def auto_flusher(self):
@@ -110,4 +112,7 @@ class VoiceSink(voice_recv.AudioSink):
                             to_queue.append((pcm, b.user))
                         del self._buffers[uid]
             for x in to_queue:
-                self.tx_queue.put(x)
+                try:
+                    self.tx_queue.put(x, timeout=1)
+                except Full:
+                    print("voice queue full")
