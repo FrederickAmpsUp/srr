@@ -222,7 +222,7 @@ class Session:
 
 class SessionManager:
     def __init__(self, discord_bot):
-        self.sessions = {}
+        self.sessions = set()
         self.keys = {}  # session_key -> session
         self.discord_bot = discord_bot
         
@@ -232,7 +232,7 @@ class SessionManager:
         key = self.generate_key()
         session.keys.add(key, "admin", "Admin")
 
-        self.sessions[id(session)] = session
+        self.sessions.add(session)
         self.keys[key] = session
 
         session.attach_loop(asyncio.get_running_loop())
@@ -251,7 +251,7 @@ class SessionManager:
             self.keys.pop(key, None)
         
         await session.cleanup()
-        del self.sessions[id(session)]
+        self.sessions.remove(session)
 
     def get_session(self, key: str) -> Session | None:
         return self.keys.get(key, None)
