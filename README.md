@@ -1,6 +1,6 @@
 # Sim Race Radio
 
-A Discord bot that listens to voice channels, transcribes and lists messages in a web interface, and lets you replay the audio — including a dedicated overlay page for use in OBS.
+A Discord bot that listens to voice channels, transcribes and lists messages in a web interface, and lets you replay the audio, including a dedicated overlay page for use in OBS.
 
 ## Features
 
@@ -9,14 +9,14 @@ A Discord bot that listens to voice channels, transcribes and lists messages in 
 - Click a message to replay its audio and text on a separate overlay page (for OBS)
 - Multiple independent sessions, each with their own access keys
 - Access key permission levels:
-  - **admin** — create/delete access keys, delete the session
-  - **write** — replay radio messages, join voice channels
-  - **read** — view data only
+  - **admin** - create/delete access keys, delete the session
+  - **write** - replay radio messages, join voice channels
+  - **read** - view data only
 
 ## Requirements
 
 - Python 3.10+ (recommended)
-- A virtual environment (venv) — required to run
+- A virtual environment (venv) - required to run
 - CUDA-capable GPU (for the default Whisper config; can be changed to CPU)
 - A Discord bot token
 
@@ -52,11 +52,11 @@ A Discord bot that listens to voice channels, transcribes and lists messages in 
    silence_sec = 0.8
    utterance_sec = 15
    ```
-   - `whisper.model` — Whisper model size (e.g. `tiny`, `base`, `small`, `medium`, `large`)
-   - `whisper.device` — `cuda` or `cpu`
-   - `whisper.compute_type` — inference precision (`float16` or `int8`)
-   - `voice.silence_sec` — silence duration (seconds) that marks the end of an utterance
-   - `voice.utterance_sec` — max length (seconds) of a single captured utterance
+   - `whisper.model` - Whisper model size (e.g. `tiny`, `base`, `small`, `medium`, `large`)
+   - `whisper.device` - `cuda` or `cpu`
+   - `whisper.compute_type` - inference precision (`float16` or `int8`)
+   - `voice.silence_sec` - silence duration (seconds) that marks the end of an utterance
+   - `voice.utterance_sec` - max length (seconds) of a single captured utterance
 
 6. Run the bot:
    ```bash
