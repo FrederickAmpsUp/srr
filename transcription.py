@@ -71,7 +71,6 @@ class QueueTranscriber(object):
                     continue
 
                 text = self.transcriber.transcribe(pcm)
-                print(text)
                 if text:
                     self.tx_queue.put((text, _apply_fade(np.frombuffer(pcm, dtype=np.int16).reshape(-1,2), 48000), *rest))
             except Exception as e:

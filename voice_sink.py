@@ -98,7 +98,6 @@ class VoiceSink(voice_recv.AudioSink):
             self._buffers[uid].push(pcm)
 
     def cleanup(self):
-        traceback.print_stack()
         self._stop.set()
 
     def auto_flusher(self):
