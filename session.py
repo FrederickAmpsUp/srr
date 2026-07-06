@@ -12,6 +12,9 @@ from dataclasses import asdict
 import io
 import soundfile as sf
 import time
+from rich.console import Console
+from rich.table import Table
+from util import format_duration
 
 class Session:
     def __init__(self, manager: SessionManager):
@@ -225,6 +228,8 @@ class SessionManager:
         self.sessions = set()
         self.keys = {}  # session_key -> session
         self.discord_bot = discord_bot
+
+        self.console = Console(force_terminal=True)
         
     def create_session(self) -> tuple[Session, str]:
         session = Session(self)
@@ -256,6 +261,12 @@ class SessionManager:
     def get_session(self, key: str) -> Session | None:
         return self.keys.get(key, None)
 
+    def get(self, i) -> Session | None:
+        try:
+            return list(self.sessions)[i]
+        except IndexError:
+            return None
+
     def get_audio(self, key: str, message: int):
         session = self.get_session(key)
         if not session: return None
@@ -266,3 +277,31 @@ class SessionManager:
             k = secrets.token_urlsafe(12)[:16]
             if k not in self.keys:
                 return k
+
+    def __repr__(self):
+        table = Table(title="Sessions")
+
+        table.add_column("Index")
+        table.add_column("Name")
+        table.add_column("Active")
+        table.add_column("Keys")
+        table.add_column("Messages")
+        table.add_column("Voice Channel")
+
+        i = 0
+        for s in self.sessions:
+            table.add_row(
+                str(i),
+                s.race_name,
+                format_duration(s.created_at),
+                str(len(s.keys.keys)),
+                str(len(s.messages.messages)),
+                s.vc_channel,
+            )
+            i += 1
+
+        with self.console.capture() as capture:
+            self.console.print(table)
+
+        return capture.get()
+        
