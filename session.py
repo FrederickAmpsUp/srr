@@ -15,6 +15,7 @@ import time
 from rich.console import Console
 from rich.table import Table
 from util import format_duration
+from datetime import datetime
 
 class Session:
     def __init__(self, manager: SessionManager):
@@ -192,7 +193,7 @@ class Session:
                 name=uname,
                 pfp=user.display_avatar.url,
                 content=text,
-                time="0:00:00"
+                time=datetime.fromtimestamp(time.time()).strftime("%H:%M:%S")
             )
 
             self.messages.add(message)

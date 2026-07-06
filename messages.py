@@ -1,5 +1,4 @@
 from dataclasses import dataclass, asdict
-from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 
@@ -9,7 +8,7 @@ class Message(object):
     name: str
     pfp: str
     content: str
-    time: float  # time.time() float
+    time: str
 
 class MessageManager:
     def __init__(self):
