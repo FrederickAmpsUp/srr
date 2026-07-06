@@ -23,6 +23,13 @@ class KeyManager:
         self.keys.pop(key, None)
         self.labels.pop(key, None)
 
+    def get_perm(self, key: str) -> str:
+        return self.keys.get(key, "read")
+
+    def can_see(self, viewer_perm: str, target_perm: str) -> bool:
+        return self.rank[viewer_perm] >= self.rank[target_perm]
+
+    # --- REPL utils ---
     def get(self, i) -> str | None:
         try:
             return list(self.keys.keys())[i]
@@ -35,12 +42,6 @@ class KeyManager:
             return False
         self.delete_key(key)
         return True
-
-    def get_perm(self, key: str) -> str:
-        return self.keys.get(key, "read")
-
-    def can_see(self, viewer_perm: str, target_perm: str) -> bool:
-        return self.rank[viewer_perm] >= self.rank[target_perm]
 
     def __repr__(self) -> str:
         if not self.keys:
