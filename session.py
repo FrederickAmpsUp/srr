@@ -99,7 +99,7 @@ class Session:
     # ---- logic ----
 
     async def delete_key(self, key: str):
-        self.keys.delete(key)
+        self.keys.delete_key(key)
         self.manager.keys.pop(key, None)
         await self.broadcast_keys()
         for client in filter(lambda c: c.key == key, self.clients):
@@ -261,12 +261,6 @@ class SessionManager:
     def get_session(self, key: str) -> Session | None:
         return self.keys.get(key, None)
 
-    def get(self, i) -> Session | None:
-        try:
-            return list(self.sessions)[i]
-        except IndexError:
-            return None
-
     def get_audio(self, key: str, message: int):
         session = self.get_session(key)
         if not session: return None
@@ -277,6 +271,20 @@ class SessionManager:
             k = secrets.token_urlsafe(12)[:16]
             if k not in self.keys:
                 return k
+
+    # --- REPL utilities ---
+    def get(self, i) -> Session | None:
+        try:
+            return list(self.sessions)[i]
+        except IndexError:
+            return None
+
+    def delete(self, i) -> bool:
+        session = self.get(i)
+        if not session:
+            return False
+        session._spawn(self.delete_session(session.keys.get(0)))
+        return True
 
     def __repr__(self):
         table = Table(title="Sessions")
